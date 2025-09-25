@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Budget Planner{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Smart Budget Planner</h1>
+        <nav>
+            <ul>
+                <li><a href="{{ url_for('index') }}">Dashboard</a></li>
+                <li><a href="{{ url_for('add_expense') }}">Add Expense</a></li>
+                <li><a href="{{ url_for('add_income') }}">Add Income</a></li>
+                <li><a href="{{ url_for('add_savings') }}">Add Savings</a></li>
+                <li><a href="{{ url_for('create_budget') }}">Budget</a></li>
+                <li><a href="{{ url_for('optimize_budget') }}">Optimize</a></li>
+                <li><a href="{{ url_for('reports') }}">Reports</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Main content -->
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Budget Planner - ML-Powered Financial Management</p>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block javascript %}{% endblock %}
+</body>
+</html>

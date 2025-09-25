@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Budget Planner{% endblock %}
+
+{% block content %}
+<section class="dashboard">
+    <div class="summary-cards">
+        <div class="card income-card">
+            <h2>Income</h2>
+            <div class="card-content">
+                <div class="amount">₹{{ "{:,.2f}".format(total_income) }}</div>
+                <div class="prediction">
+                    <p>Next Month: ₹{{ "{:,.2f}".format(income_prediction.total) }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card expense-card">
+            <h2>Expenses</h2>
+            <div class="card-content">
+                <div class="amount">₹{{ "{:,.2f}".format(total_expenses) }}</div>
+                <div class="prediction">
+                    <p>Next Month: ₹{{ "{:,.2f}".format(expense_prediction.total) }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card savings-card">
+            <h2>Savings</h2>
+            <div class="card-content">
+                <div class="amount">₹{{ "{:,.2f}".format(total_savings) }}</div>
+                <div class="prediction">
+                    <p>Next Month: ₹{{ "{:,.2f}".format(savings_prediction.next_month) }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card balance-card">
+            <h2>Balance</h2>
+            <div class="card-content">
+                <div class="amount">₹{{ "{:,.2f}".format(total_income - total_expenses) }}</div>
+                <div class="prediction">
+                    {% set predicted_balance = income_prediction.total - expense_prediction.total %}
+                    <p>Next Month: ₹{{ "{:,.2f}".format(predicted_balance) }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="charts-container">
+        <div class="chart-card">
+            <h3>Expenses by Category</h3>
+            <canvas id="expenseChart"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3>Income vs Expenses</h3>
+            <canvas id="balanceChart"></canvas>
+        </div>
+    </div>
+
+    <div class="recent-transactions">
+        <h3>Recent Expenses</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Category</th>
+                    <th>Description</th>
+                    <th>Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for expense in data.expenses[-5:]|reverse %}
+                <tr>
+                    <td>{{ expense.date }}</td>
+                    <td>{{ expense.category }}</td>
+                    <td>{{ expense.description }}</td>
+                    <td class="amount">₹{{ "{:,.2f}".format(expense.amount) }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4">No recent expenses</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="recent-transactions">
+        <h3>Recent Income</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Source</th>
+                    <th>Description</th>
+                    <th>Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for income in data.income[-5:]|reverse %}
+                <tr>
+                    <td>{{ income.date }}</td>
+                    <td>{{ income.source }}</td>
+                    <td>{{ income.description }}</td>
+                    <td class="amount">₹{{ "{:,.2f}".format(income.amount) }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4">No recent income</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="ml-insights">
+        <h3>AI Budget Insights</h3>
+        <div class="insights-content">
+            {% if expense_prediction.total > 0 %}
+            <div class="insight">
+                <h4>Expense Prediction</h4>
+                <p>Based on your spending habits, you're likely to spend <strong>₹{{ "{:,.2f}".format(expense_prediction.total) }}</strong> next month.</p>
+                <div class="categories">
+                    <h5>Top Categories:</h5>
+                    <ul>
+                        {% for category, amount in expense_prediction.categories.items() %}
+                            {% if loop.index <= 3 %}
+                                <li>{{ category }}: ₹{{ "{:,.2f}".format(amount) }}</li>
+                            {% endif %}
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if income_prediction.total > 0 %}
+            <div class="insight">
+                <h4>Income Prediction</h4>
+                <p>Your projected income for next month is <strong>₹{{ "{:,.2f}".format(income_prediction.total) }}</strong>.</p>
+            </div>
+            {% endif %}
+
+            {% if savings_prediction.next_month > 0 %}
+            <div class="insight">
+                <h4>Savings Potential</h4>
+                <p>You could save <strong>₹{{ "{:,.2f}".format(savings_prediction.next_month) }}</strong> next month.</p>
+                <p>In 6 months, you could save <strong>₹{{ "{:,.2f}".format(six_month_forecast_total) }}</strong>.</p>
+            </div>
+            {% endif %}
+
+            {% if total_income > 0 and total_expenses > 0 %}
+            <div class="insight">
+                <h4>Budget Health</h4>
+                {% set savings_rate = ((total_income - total_expenses) / total_income) * 100 if total_income > 0 else 0 %}
+                <p>Your current savings rate is <strong>{{ "%.1f"|format(savings_rate) }}%</strong>.</p>
+                {% if savings_rate < 10 %}
+                    <p class="warning">Your savings rate is below the recommended 10%. Consider optimizing your budget.</p>
+                    <a href="{{ url_for('optimize_budget') }}" class="btn">Optimize Budget</a>
+                {% elif savings_rate > 20 %}
+                    <p class="success">Great job! Your savings rate is above 20%.</p>
+                {% else %}
+                    <p>Your savings rate is good. Keep it up!</p>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block javascript %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Expense chart
+        const expenseCtx = document.getElementById('expenseChart').getContext('2d');
+        const expenseData = {
+            labels: [
+                {% for category, amount in expense_prediction.categories.items() %}
+                    '{{ category }}'{% if not loop.last %},{% endif %}
+                {% endfor %}
+            ],
+            datasets: [{
+                label: 'Current Month',
+                data: [
+                    {% for category, amount in expense_prediction.categories.items() %}
+                        {{ amount }}{% if not loop.last %},{% endif %}
+                    {% endfor %}
+                ],
+                backgroundColor: [
+                    '#e63946', '#457b9d', '#2a9d8f', '#f4a261',
+                    '#e76f51', '#6d597a', '#b56576', '#6c757d'
+                ]
+            }]
+        };
+
+        new Chart(expenseCtx, {
+            type: 'doughnut',
+            data: expenseData,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                    }
+                }
+            }
+        });
+
+        // Balance chart
+        const balanceCtx = document.getElementById('balanceChart').getContext('2d');
+        const balanceData = {
+            labels: ['Current', 'Predicted'],
+            datasets: [
+                {
+                    label: 'Income',
+                    data: [{{ total_income }}, {{ income_prediction.total }}],
+                    backgroundColor: '#2a9d8f',
+                },
+                {
+                    label: 'Expenses',
+                    data: [{{ total_expenses }}, {{ expense_prediction.total }}],
+                    backgroundColor: '#e63946',
+                }
+            ]
+        };
+
+        new Chart(balanceCtx, {
+            type: 'bar',
+            data: balanceData,
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        stacked: false
+                    },
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

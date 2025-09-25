@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+
+{% block title %}Financial Reports{% endblock %}
+
+{% block content %}
+<section class="reports-container">
+    <h2>Financial Reports</h2>
+    
+    <div class="date-selector">
+        <label for="reportPeriod">Select Period:</label>
+        <select id="reportPeriod">
+            <option value="month">This Month</option>
+            <option value="quarter">Last 3 Months</option>
+            <option value="year">Past Year</option>
+            <option value="all" selected>All Time</option>
+        </select>
+    </div>
+    
+    <div class="reports-overview">
+        <div class="report-stat">
+            <h3>Savings Rate</h3>
+            <div class="stat-value">{{ "%.1f"|format(report_data.savings_rate) }}%</div>
+            {% if report_data.savings_rate >= 20 %}
+                <div class="rating excellent">Excellent</div>
+            {% elif report_data.savings_rate >= 10 %}
+                <div class="rating good">Good</div>
+            {% elif report_data.savings_rate >= 5 %}
+                <div class="rating fair">Fair</div>
+            {% else %}
+                <div class="rating poor">Needs Improvement</div>
+            {% endif %}
+        </div>
+        
+        <div class="report-stat">
+            <h3>Income Sources</h3>
+            <div class="stat-value">{{ report_data.income_by_source|length }}</div>
+        </div>
+        
+        <div class="report-stat">
+            <h3>Expense Categories</h3>
+            <div class="stat-value">{{ report_data.expenses_by_category|length }}</div>
+        </div>
+        
+        <div class="report-stat">
+            <h3>Avg Monthly Savings</h3>
+            {% set monthly_savings = ((report_data.income_by_source.values()|sum - report_data.expenses_by_category.values()|sum) / 1)|default(0) %}
+            <div class="stat-value">₹{{ "{:,.2f}".format(monthly_savings) }}</div>
+        </div>
+    </div>
+    
+    <div class="report-charts">
+        <div class="chart-card">
+            <h3>Expenses by Category</h3>
+            <canvas id="expenseCategoryChart"></canvas>
+        </div>
+        
+        <div class="chart-card">
+            <h3>Income by Source</h3>
+            <canvas id="incomeSourceChart"></canvas>
+        </div>
+        
+        <div class="chart-card full-width">
+            <h3>Monthly Income vs. Expenses</h3>
+            <canvas id="monthlyComparisonChart"></canvas>
+        </div>
+    </div>
+    
+    <div class="report-tables">
+        <div class="table-section">
+            <h3>Expense Breakdown</h3>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Amount</th>
+                        <th>Percentage</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set total_expenses = report_data.expenses_by_category.values()|sum %}
+                    {% for category, amount in report_data.expenses_by_category.items() %}
+                    <tr>
+                        <td>{{ category|capitalize }}</td>
+                        <td>₹{{ "{:,.2f}".format(amount) }}</td>
+                        <td>{{ "%.1f"|format((amount / total_expenses * 100) if total_expenses > 0 else 0) }}%</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3">No expense data available</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th>Total</th>
+                        <th>₹{{ "{:,.2f}".format(total_expenses) }}</th>
+                        <th>100%</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        
+        <div class="table-section">
+            <h3>Income Breakdown</h3>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Source</th>
+                        <th>Amount</th>
+                        <th>Percentage</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set total_income = report_data.income_by_source.values()|sum %}
+                    {% for source, amount in report_data.income_by_source.items() %}
+                    <tr>
+                        <td>{{ source|capitalize }}</td>
+                        <td>₹{{ "{:,.2f}".format(amount) }}</td>
+                        <td>{{ "%.1f"|format((amount / total_income * 100) if total_income > 0 else 0) }}%</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3">No income data available</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th>Total</th>
+                        <th>₹{{ "{:,.2f}".format(total_income) }}</th>
+                        <th>100%</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    
+    <div class="report-insights">
+        <h3>Financial Insights</h3>
+        <div class="insights-grid">
+            {% if total_expenses > 0 %}
+            <div class="insight-card">
+                <h4>Top Expense</h4>
+                {% set top_expense = report_data.expenses_by_category.items()|list|sort(attribute=1, reverse=True)|first %}
+                <p class="insight-value">{{ top_expense[0]|capitalize }}</p>
+                <p class="insight-detail">₹{{ "{:,.2f}".format(top_expense[1]) }} ({{ "%.1f"|format((top_expense[1] / total_expenses * 100)) }}%)</p>
+            </div>
+            {% endif %}
+            
+            {% if total_income > 0 %}
+            <div class="insight-card">
+                <h4>Primary Income</h4>
+                {% set primary_income = report_data.income_by_source.items()|list|sort(attribute=1, reverse=True)|first %}
+                <p class="insight-value">{{ primary_income[0]|capitalize }}</p>
+                <p class="insight-detail">₹{{ "{:,.2f}".format(primary_income[1]) }} ({{ "%.1f"|format((primary_income[1] / total_income * 100)) }}%)</p>
+            </div>
+            {% endif %}
+            
+            {% if total_income > 0 and total_expenses > 0 %}
+            <div class="insight-card">
+                <h4>Income-to-Expense Ratio</h4>
+                <p class="insight-value">{{ "%.2f"|format(total_income / total_expenses) }}</p>
+                {% if (total_income / total_expenses) >= 1.5 %}
+                <p class="insight-detail positive">Excellent financial health</p>
+                {% elif (total_income / total_expenses) >= 1.2 %}
+                <p class="insight-detail positive">Good financial health</p>
+                {% elif (total_income / total_expenses) >= 1 %}
+                <p class="insight-detail neutral">Adequate financial health</p>
+                {% else %}
+                <p class="insight-detail negative">Financial health needs attention</p>
+                {% endif %}
+            </div>
+            {% endif %}
+            
+            <div class="insight-card">
+                <h4>Budget Adherence</h4>
+                <p class="insight-value">Coming Soon</p>
+                <p class="insight-detail">Future update will track budget adherence</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="export-options">
+        <h3>Export Report</h3>
+        <div class="export-buttons">
+            <button id="exportPDF" class="btn btn-primary">Export as PDF</button>
+            <button id="exportCSV" class="btn btn-secondary">Export as CSV</button>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block javascript %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Expense Category Chart
+        const expenseCategoryCtx = document.getElementById('expenseCategoryChart').getContext('2d');
+        const expenseCategoryData = {
+            labels: [
+                {% for category in report_data.expenses_by_category.keys() %}
+                    '{{ category|capitalize }}',
+                {% endfor %}
+            ],
+            datasets: [{
+                label: 'Expenses by Category',
+                data: [
+                    {% for amount in report_data.expenses_by_category.values() %}
+                        {{ amount }},
+                    {% endfor %}
+                ],
+                backgroundColor: [
+                    '#e63946', '#457b9d', '#2a9d8f', '#f4a261', 
+                    '#e76f51', '#6d597a', '#b56576', '#6c757d',
+                    '#ffb703', '#fb8500', '#219ebc', '#023047'
+                ]
+            }]
+        };
+        
+        new Chart(expenseCategoryCtx, {
+            type: 'doughnut',
+            data: expenseCategoryData,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                    }
+                }
+            }
+        });
+        
+        // Income Source Chart
+        const incomeSourceCtx = document.getElementById('incomeSourceChart').getContext('2d');
+        const incomeSourceData = {
+            labels: [
+                {% for source in report_data.income_by_source.keys() %}
+                    '{{ source|capitalize }}',
+                {% endfor %}
+            ],
+            datasets: [{
+                label: 'Income by Source',
+                data: [
+                    {% for amount in report_data.income_by_source.values() %}
+                        {{ amount }},
+                    {% endfor %}
+                ],
+                backgroundColor: [
+                    '#2a9d8f', '#4ea8de', '#90be6d', '#43aa8b',
+                    '#277da1', '#577590', '#4d908e', '#43aa8b',
+                    '#52b788', '#76c893', '#99d98c', '#b5e48c'
+                ]
+            }]
+        };
+        
+        new Chart(incomeSourceCtx, {
+            type: 'pie',
+            data: incomeSourceData,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                    }
+                }
+            }
+        });
+        
+        // Monthly Comparison Chart (dummy data for now - would be populated from backend)
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+        const monthlyIncomeData = [5000, 5200, 4800, 5500, 6000, 5800];
+        const monthlyExpenseData = [4200, 4500, 4300, 4800, 5200, 4900];
+        
+        const monthlyComparisonCtx = document.getElementById('monthlyComparisonChart').getContext('2d');
+        const monthlyComparisonData = {
+            labels: months,
+            datasets: [
+                {
+                    label: 'Income',
+                    data: monthlyIncomeData,
+                    backgroundColor: '#2a9d8f',
+                    borderColor: '#2a9d8f',
+                    borderWidth: 2,
+                    tension: 0.3
+                },
+                {
+                    label: 'Expenses',
+                    data: monthlyExpenseData,
+                    backgroundColor: '#e63946',
+                    borderColor: '#e63946',
+                    borderWidth: 2,
+                    tension: 0.3
+                }
+            ]
+        };
+        
+        new Chart(monthlyComparisonCtx, {
+            type: 'line',
+            data: monthlyComparisonData,
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                }
+            }
+        });
+        
+        // Export buttons (placeholders - would need backend implementation)
+        document.getElementById('exportPDF').addEventListener('click', function() {
+            alert('PDF export functionality will be implemented in a future update.');
+        });
+        
+        document.getElementById('exportCSV').addEventListener('click', function() {
+            alert('CSV export functionality will be implemented in a future update.');
+        });
+        
+        // Period selector (placeholder - would need backend implementation)
+        document.getElementById('reportPeriod').addEventListener('change', function() {
+            // In a real implementation, this would trigger an AJAX call to get new data
+            alert('Period selection will be implemented in a future update.');
+        });
+    });
+</script>
+{% endblock %}

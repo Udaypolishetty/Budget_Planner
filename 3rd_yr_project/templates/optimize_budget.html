@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}Optimize Budget{% endblock %}
+
+{% block content %}
+<section class="optimize-container">
+    <h2>Budget Optimization</h2>
+    
+    <div class="optimize-intro">
+        <p>Our machine learning model has analyzed your spending patterns and income to provide an optimized budget that helps you better achieve your financial goals.</p>
+    </div>
+    
+    <div class="budget-comparison">
+        <div class="budget-column">
+            <h3>Current Budget</h3>
+            <div class="budget-items">
+                {% for category, amount in current_budget.items() %}
+                <div class="budget-item">
+                    <div class="category">{{ category|capitalize }}</div>
+                    <div class="amount">₹{{ "{:,.2f}".format(amount) }}</div>
+                </div>
+                {% else %}
+                <div class="empty-message">No current budget defined</div>
+                {% endfor %}
+            </div>
+            <div class="budget-total">
+                <div class="category">Total</div>
+                <div class="amount">₹{{ "{:,.2f}".format(current_budget.values()|sum) }}</div>
+            </div>
+        </div>
+        
+        <div class="comparison-arrows">
+            <div class="arrow">→</div>
+        </div>
+        
+        <div class="budget-column optimized">
+            <h3>Optimized Budget</h3>
+            <div class="budget-items">
+                {% for category, amount in optimized_budget.items() %}
+                <div class="budget-item">
+                    <div class="category">{{ category|capitalize }}</div>
+                    <div class="amount">₹{{ "{:,.2f}".format(amount) }}</div>
+                    
+                    {% set current_amount = current_budget.get(category, 0) %}
+                    {% if amount > current_amount %}
+                    <div class="change increase">+{{ "{:,.2f}".format(amount - current_amount) }}</div>
+                    {% elif amount < current_amount %}
+                    <div class="change decrease">-{{ "{:,.2f}".format(current_amount - amount) }}</div>
+                    {% else %}
+                    <div class="change">No change</div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="empty-message">Not enough data for optimization</div>
+                {% endfor %}
+            </div>
+            <div class="budget-total">
+                <div class="category">Total</div>
+                <div class="amount">₹{{ "{:,.2f}".format(optimized_budget.values()|sum) }}</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="optimization-chart">
+        <h3>Budget Comparison Chart</h3>
+        <canvas id="comparisonChart"></canvas>
+    </div>
+    
+    <div class="optimization-insights">
+        <h3>Optimization Insights</h3>
+        <div class="insights-content">
+            <div class="insight">
+                <h4>Areas to Reduce</h4>
+                <ul>
+                {% for category, amount in optimized_budget.items() %}
+                    {% set current_amount = current_budget.get(category, 0) %}
+                    {% if amount < current_amount and (current_amount - amount) > 0.01 %}
+                    <li>
+                        <strong>{{ category|capitalize }}:</strong> Consider reducing your {{ category }} budget by ₹{{ "{:,.2f}".format(current_amount - amount) }}
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                </ul>
+            </div>
+            
+            <div class="insight">
+                <h4>Areas to Increase</h4>
+                <ul>
+                {% for category, amount in optimized_budget.items() %}
+                    {% set current_amount = current_budget.get(category, 0) %}
+                    {% if amount > current_amount and (amount - current_amount) > 0.01 %}
+                    <li>
+                        <strong>{{ category|capitalize }}:</strong> Consider increasing your {{ category }} budget by ₹{{ "{:,.2f}".format(amount - current_amount) }}
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                </ul>
+            </div>
+            
+            <div class="insight">
+                <h4>Potential Savings</h4>
+                {% set current_total = current_budget.values()|sum %}
+                {% set optimized_total = optimized_budget.values()|sum %}
+                
+                {% if optimized_total < current_total %}
+                <p>By following this optimized budget, you could save <strong>₹{{ "{:,.2f}".format(current_total - optimized_total) }}</strong> per month!</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="form-actions">
+        <form method="POST" action="{{ url_for('create_budget') }}">
+            {% for category, amount in optimized_budget.items() %}
+            <input type="hidden" name="{{ category }}" value="{{ amount }}">
+            {% endfor %}
+            <button type="submit" class="btn btn-primary">Apply Optimized Budget</button>
+        </form>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block javascript %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Comparison chart
+        const comparisonCtx = document.getElementById('comparisonChart').getContext('2d');
+        
+        // Extract categories and values
+        const categories = [
+            {% for category in optimized_budget.keys() %}
+                '{{ category|capitalize }}',
+            {% endfor %}
+        ];
+        
+        const currentValues = [
+            {% for category in optimized_budget.keys() %}
+                {{ current_budget.get(category, 0) }},
+            {% endfor %}
+        ];
+        
+        const optimizedValues = [
+            {% for category, amount in optimized_budget.items() %}
+                {{ amount }},
+            {% endfor %}
+        ];
+        
+        const comparisonData = {
+            labels: categories,
+            datasets: [
+                {
+                    label: 'Current Budget',
+                    data: currentValues,
+                    backgroundColor: '#457b9d',
+                    borderColor: '#457b9d',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Optimized Budget',
+                    data: optimizedValues,
+                    backgroundColor: '#2a9d8f',
+                    borderColor: '#2a9d8f',
+                    borderWidth: 1
+                }
+            ]
+        };
+        
+        new Chart(comparisonCtx, {
+            type: 'bar',
+            data: comparisonData,
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

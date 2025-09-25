@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Create Budget{% endblock %}
+
+{% block content %}
+<section class="form-container">
+    <h2>Create/Edit Budget</h2>
+    
+    <form method="POST" action="{{ url_for('create_budget') }}">
+        <div class="budget-form">
+            <div class="form-group">
+                <label for="housing">Housing</label>
+                <input type="number" name="housing" id="housing" min="0" step="0.01" value="{{ budget.housing|default(0) }}">
+            </div>
+            
+            <div class="form-group">
+                <label for="utilities">Utilities</label>
+                <input type="number" name="utilities" id="utilities" min="0" step="0.01" value="{{ budget.utilities|default(0) }}">
+            </div>
+            
+            <div class="form-group">
+                <label for="food">Food</label>
+                <input type="number" name="food" id="food" min="0" step="0.01" value="{{ budget.food|default(0) }}">
+            </div>
+            
+            <div class="form-group">
+                <label for="transportation">Transportation</label>
+                <input type="number" name="transportation" id="transportation" min="0" step="0.01" value="{{ budget.transportation|default(0) }}">
+            </div>
+            
+            <div class="form-group">
+                <label for="entertainment">Entertainment</label>
+                <input type="number" name="entertainment" id="entertainment" min="0" step="0.01" value="{{ budget.entertainment|default(0) }}">
+            </div>
+            
+            <div class="form-group">
+                <label for="health">Health</label>
+                <input type="number" name="health" id="health" min="0" step="0.01" value="{{ budget.health|default(0) }}">
+            </div>
+            
+            <div class="form-group">
+                <label for="education">Education</label>
+                <input type="number" name="education" id="education" min="0" step="0.01" value="{{ budget.education|default(0) }}">
+            </div>
+            
+            <div class="form-group">
+                <label for="other">Other</label>
+                <input type="number" name="other" id="other" min="0" step="0.01" value="{{ budget.other|default(0) }}">
+            </div>
+        </div>
+        
+        <div class="budget-summary">
+            <div class="budget-total">
+                <h3>Budget Total: <span id="budgetTotal">₹0.00</span></h3>
+            </div>
+        </div>
+        
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save Budget</button>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+            <button type="button" id="recommendBudget" class="btn btn-info">Recommend Budget</button>
+        </div>
+    </form>
+</section>
+
+{% endblock %}
+
+{% block javascript %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Calculate total budget
+        function calculateTotal() {
+            let total = 0;
+            const inputs = document.querySelectorAll('input[type="number"]');
+            
+            inputs.forEach(input => {
+                total += parseFloat(input.value) || 0;
+            });
+            
+            document.getElementById('budgetTotal').textContent = '₹' + total.toFixed(2);
+        }
+        
+        // Add event listeners to all number inputs
+        document.querySelectorAll('input[type="number"]').forEach(input => {
+            input.addEventListener('input', calculateTotal);
+        });
+        
+        // Initial calculation
+        calculateTotal();
+        
+        // Recommend budget button handler
+        document.getElementById('recommendBudget').addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // This would typically call an API to get recommendations based on the ML model
+            // For this demo, we'll use a simple percentage-based approach
+            const recommendedBudget = {
+                housing: 30,
+                utilities: 10,
+                food: 15,
+                transportation: 10,
+                entertainment: 10,
+                health: 10,
+                education: 5,
+                other: 10
+            };
+            
+            // Let's assume a total monthly income of ₹50,000 for this example
+            const totalIncome = 50000;
+            
+            // Apply recommendations
+            Object.keys(recommendedBudget).forEach(category => {
+                const amount = (recommendedBudget[category] / 100) * totalIncome;
+                document.getElementById(category).value = amount.toFixed(2);
+            });
+            
+            // Update total
+            calculateTotal();
+        });
+    });
+</script>
+{% endblock %}
